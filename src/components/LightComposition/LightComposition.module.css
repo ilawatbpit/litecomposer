@@ -1,0 +1,103 @@
+
+
+.wrapper {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+
+}
+
+.panel {
+  padding: 10px;
+  /* background: rgba(255, 255, 255, 0.2); */
+  overflow-y: auto;
+}
+
+.panel label {
+  display: block;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.panel input[type="number"], .panel select{
+  width: 20%;
+  box-sizing: border-box;
+  border-radius: 9px;
+  border: none;
+  background-color: inherit;
+  padding-left: 10px;
+
+}
+
+.panel select{
+  width: 100%;
+  border: 1px solid #c3c5c9;
+  height: 30px;
+  margin-bottom: 30px;
+}
+
+.panel input:focus, .panel select:focus{
+  outline: none;
+}
+.inputsDiv{
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+
+/* input range style */
+.panel input[type="range"] {
+  width: 70%;
+  height: 2px;
+  margin-top: 12px;
+  background: #ddd;
+  border-radius: 10px;
+  outline: none;
+  padding: 0 4px;
+  -webkit-appearance: none;
+}
+
+/* Thumb (Chrome, Safari, Opera, Edge) */
+.panel input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #44b753;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  margin-top: -4px; /* Align thumb with track */
+}
+
+
+input[type="range"].inactive::-webkit-slider-thumb {
+  background: #ddd;
+  transition: background 0.5s ease;
+}
+
+/* Thumb (Firefox) */
+.panel input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #44b753;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* Track (Firefox) */
+.panel input[type="range"]::-moz-range-track {
+  background: transparent;
+  height: 6px;
+  border-radius: 5px;
+}
+
+/* Track (WebKit) */
+.panel input[type="range"]::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 6px;
+  border-radius: 5px;
+}

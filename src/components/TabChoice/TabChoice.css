@@ -1,0 +1,21 @@
+.tabs{
+    height: 40px;
+    /* border-bottom: 3px solid black; */
+    padding: 0 20px;
+    display: flex;
+    align-items: center;       
+}
+
+.tabs ul{
+    width: 100%;
+    display: flex;
+    list-style: none;
+    justify-content: space-between;
+}
+.tabs ul{
+    cursor: pointer;
+}
+
+.tabs ul .active{
+    border-bottom: 1px solid black;
+}

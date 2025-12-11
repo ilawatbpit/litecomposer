@@ -1,0 +1,27 @@
+
+.content-right {
+    flex: 17;
+}
+.content-left-scrollable::-webkit-scrollbar {
+  display: none;
+}
+.content-left-scrollable {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+
+.content-right img{
+    width: 100%;
+    margin: auto;
+}
+
+
+/* styles.css or global.css */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
