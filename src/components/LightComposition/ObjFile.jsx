@@ -52,7 +52,7 @@ const ObjFile = ({ config, onStringHeightsUpdate }) => {
     animate();
 
     const loader = new OBJLoader();
-    loader.load("/configurator/models/myModel.obj", (obj) => {
+    loader.load("/litecomposer/models/myModel.obj", (obj) => {
       modelRef.current = obj;
       updateSceneWithConfig();
     });
