@@ -8,8 +8,11 @@ export default function Baseplate2D({ stringHeights, surface }) {
   useEffect(() => {
     if (!stringHeights || stringHeights.length === 0 || !surface) return;
 
-    const plateWidth = Number(surface.width);   // short side  (3D X axis)
-    const plateLength = Number(surface.length); // long side   (3D Z axis)
+    // const plateWidth = Number(surface.width);   // short side  (3D X axis)
+    // const plateLength = Number(surface.length); // long side   (3D Z axis)
+
+    const plateWidth = Number(surface.width);   // 3D X
+    const plateLength = Number(surface.length); // 3D Z
 
     if (!plateWidth || !plateLength) return;
 
@@ -77,8 +80,8 @@ export default function Baseplate2D({ stringHeights, surface }) {
     // Bottom horizontal = Length
     // Right vertical = Width
     // -------------------------------------------------------------
-    drawDimensionHorizontal(ctx, 0, drawHeight + 30, drawWidth, `${plateLength} mm`);
-    drawDimensionVertical(ctx, drawWidth + 30, 0, drawHeight, `${plateWidth} mm`);
+    drawDimensionHorizontal(ctx, 0, drawHeight + 30, drawWidth, `${plateLength} cm`);
+    drawDimensionVertical(ctx, drawWidth + 30, 0, drawHeight, `${plateWidth} cm`);
 
   }, [stringHeights, surface]);
 

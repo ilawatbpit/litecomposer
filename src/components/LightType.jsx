@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useWorkingModel } from "../context/WorkingModelContext";
 
 export default function LightType() {
   const [openModal, setOpenModal] = useState(false);
@@ -6,10 +7,12 @@ export default function LightType() {
   const [activeImage, setActiveImage] = useState(0);
   const [fade, setFade] = useState(false);
 
+  const { workingModel, setWorkingModel } = useWorkingModel();
+
   const modelList = [
     {
       id: "c1",
-      name: "Crystal 1",
+      name: "cylinder",
       images: [
         import.meta.env.BASE_URL + "/crystals/crystal1/crystal1.jpg",
         import.meta.env.BASE_URL + "/crystals/crystal1/mock 1.jpg",
@@ -21,7 +24,7 @@ export default function LightType() {
     },
     {
       id: "c2",
-      name: "Crystal 2",
+      name: "teardrop",
       images: [
         import.meta.env.BASE_URL + "/crystals/crystal 2/crystal2.jpg",
         import.meta.env.BASE_URL + "/crystals/crystal 2/mock 1.jpg",
@@ -33,7 +36,7 @@ export default function LightType() {
     },
     {
       id: "c3",
-      name: "Crystal 3",
+      name: "circle",
       images: [
         import.meta.env.BASE_URL + "/crystals/crystal 3/crystal3.jpg",
         import.meta.env.BASE_URL + "/crystals/crystal 3/mock 1.jpg",
@@ -84,7 +87,9 @@ export default function LightType() {
             <div className="absolute w-full h-full bg-black/70 backdrop-blur-sm 
                             flex flex-col justify-center items-center 
                             group-hover:opacity-100 opacity-0 duration-300 transition-all">
-              <button className="bg-black w-1/4 shadow-white/10 shadow-xl  text-white backdrop-blur-md hover:bg-[#0d0d0d]
+              <button 
+              onClick={() => setWorkingModel(each.name)}
+              className="bg-black w-1/4 shadow-white/10 shadow-xl  text-white backdrop-blur-md hover:bg-[#0d0d0d]
                                  px-4 py-2 rounded-full mb-3 transition">
                 SELECT
               </button>

@@ -1,6 +1,7 @@
 import Header from "./components/Header.jsx";
 import TabChoice from "./components/TabChoice/TabChoice.jsx";
 import SideBar from "./components/SideBar/SideBar.jsx";
+import { WorkingModelProvider } from "./context/WorkingModelContext";
 
 import LightComposition from "./components/LightComposition/LightComposition";
 import LightDetail from "./components/LightDetail";
@@ -29,6 +30,7 @@ function App() {
   return (
     <>
       <div>
+         <WorkingModelProvider>
         <Header handleTabClick={handleTabClick} />
         <div className="main-container">
           <div className="side-bar ">
@@ -41,6 +43,7 @@ function App() {
             {content}
           </div>
         </div>
+        </WorkingModelProvider>
       </div>
     </>
   );

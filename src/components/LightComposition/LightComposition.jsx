@@ -1,56 +1,21 @@
-// LightComposition.jsx
-import React, { useState } from "react";
+// src/components/LightComposition.jsx
+import React, { useState, useRef } from "react";
 import Styles from "./LightComposition.module.css";
 import ObjFile from "./ObjFile.jsx";
 import Modal from "../Modal.jsx";
-
 import Baseplate2D from "./Baseplate2D";
 
+import { useWorkingModel } from "../../context/WorkingModelContext";
+
 export default function LightComposition() {
-  const [currentData, setCurrentData] = useState("");
+
+  const { workingModel, setWorkingModel } = useWorkingModel();
+
+  const objRef = useRef(null);
+
+  const [currentData, setCurrentData] = useState(null);
   const [ismodalOpen, setIsModalOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
-
-  function handleModal() {
-    setIsModalOpen((prev) => !prev);
-  }
-
-  function handlePanel() {
-    setPanelOpen((prev) => !prev);
-  }
-
-  const handleGetData = () => {
-    const surfaceLength =
-      config.surfaceLength === 0
-        ? (config.cols - 1) * config.spacing +
-        parseInt(config.baseOffset || 0, 10)
-        : config.surfaceLength;
-    const surfaceWidth =
-      config.surfaceWidth === 0
-        ? (config.rows - 1) * config.spacing +
-        parseInt(config.baseOffset || 0, 10)
-        : config.surfaceWidth;
-
-    const data = {
-      stringHeights,
-      surface: {
-        length: surfaceLength,
-        width: surfaceWidth,
-        height: config.surfaceHeight,
-        baseOffset: config.baseOffset,
-      },
-      pattern: config.pattern,
-      pendantType: "Your pendant type here",
-      finishes: "Your finishes here",
-      objFile: "/configurator/models/myModel.obj",
-    };
-
-    handleModal();
-    setCurrentData(data);
-
-    // You can also show in UI, download as JSON, etc.
-  };
-
   const [stringHeights, setStringHeights] = useState([]);
 
   const [config, setConfig] = useState({
@@ -66,40 +31,104 @@ export default function LightComposition() {
     highest: 150,
   });
 
+  /* ===============================
+     UI HANDLERS
+     =============================== */
+  const handleModal = () => setIsModalOpen((p) => !p);
+  const handlePanel = () => setPanelOpen((p) => !p);
+
+  /* ===============================
+     CONFIG CHANGE
+     =============================== */
   const handleChange = (e) => {
     const { name, value } = e.target;
+
     if (name === "pattern") {
       setConfig((prev) => ({ ...prev, [name]: value }));
     } else {
-      setConfig((prev) => ({ ...prev, [name]: parseInt(value, 10) }));
-    }
+      const intVal = parseInt(value, 10) || 0;
+      setConfig((prev) => ({ ...prev, [name]: intVal }));
 
-    if (name === "surfaceHeight") {
-      if (value < config.highest || value < config.lowest) {
-        setConfig((prev) => ({ ...prev, highest: value, lowest: value }));
+      if (name === "surfaceHeight") {
+        if (intVal < prev.highest || intVal < prev.lowest) {
+          setConfig((prev) => ({
+            ...prev,
+            highest: intVal,
+            lowest: intVal,
+          }));
+        }
       }
     }
   };
 
+  /* ===============================
+     GENERATE 3D
+     =============================== */
   const handleGenerate = () => {
-    setConfig((prev) => ({
-      ...prev,
-      version: prev.version + 1,
-    }));
+    // trigger ObjFile update
+    setConfig((prev) => ({ ...prev }));
+    setGenerated(true);
   };
 
+/* ===============================
+   COLLECT DATA FOR MODAL
+   =============================== */
+const handleGetData = () => {
+  // IMPORTANT: Must match ObjFile.jsx axis convention:
+  // rows -> Length (Z), cols -> Width (X)
+  const autoSurfaceLength =
+    (config.rows - 1) * config.spacing + parseInt(config.baseOffset || 0, 10);
+
+  const autoSurfaceWidth =
+    (config.cols - 1) * config.spacing + parseInt(config.baseOffset || 0, 10);
+
+  const surfaceLength =
+    config.surfaceLength === 0 ? autoSurfaceLength : config.surfaceLength;
+
+  const surfaceWidth =
+    config.surfaceWidth === 0 ? autoSurfaceWidth : config.surfaceWidth;
+
+  const data = {
+    stringHeights,
+    surface: {
+      length: surfaceLength, // Z
+      width: surfaceWidth,   // X
+      height: config.surfaceHeight,
+      baseOffset: config.baseOffset,
+      spacing: config.spacing, // (optional, but useful later)
+      rows: config.rows,
+      cols: config.cols,
+    },
+    pattern: config.pattern,
+    pendantType: "Custom Pendant",
+    finishes: "Default",
+    objFile: "/configurator/models/myModel.obj",
+  };
+
+  setCurrentData(data);
+  setIsModalOpen(true);
+};
+
+
+  /* ===============================
+     RENDER
+     =============================== */
   return (
     <div className={Styles.wrapper}>
-      <div className={`flex flex-col justify-start absolute h-screen bg-white`}>
+      {/* ================= PANEL ================= */}
+      <div className="flex flex-col justify-start absolute h-screen bg-white">
         <div className="text-right p-4">
           <span onClick={handlePanel}>&times;</span>
         </div>
+
         <div
-          className={`${Styles.panel} ${panelOpen
-            ? "opacity-1 w-[290px] transition-[opacity] delay-200"
-            : "opacity-0 w-[2px]"
-            } transition-[width] duration-500 scrollbar-hide`}
+          className={`${Styles.panel} ${
+            panelOpen
+              ? "opacity-100 w-[290px] transition-all"
+              : "opacity-0 w-[2px]"
+          } duration-500 scrollbar-hide`}
         >
+          {/* Pattern */}
           <label>
             Pattern:
             <select
@@ -125,223 +154,119 @@ export default function LightComposition() {
             </select>
           </label>
 
+          {/* Sliders */}
           {[
-            { labelName: "Rows", name: "rows", max: 20, min: 1, val: 0 },
-            { labelName: "Column", name: "cols", max: 20, min: 1, val: 0 },
-            { labelName: "Spacing", name: "spacing", max: 100, min: 0, val: 0 },
-            {
-              labelName: "Base Plate Length",
-              name: "surfaceLength",
-              max: 999,
-              min: 0,
-              val: 0,
-            },
-            {
-              labelName: "Base Plate Width",
-              name: "surfaceWidth",
-              max: 999,
-              min: 0,
-              val: 0,
-            },
-            {
-              labelName: "Base Plate From Floor",
-              name: "surfaceHeight",
-              max: 999,
-              min: 0,
-              val: 0,
-            },
-            {
-              labelName: "Base Plate Offset",
-              name: "baseOffset",
-              max: 30,
-              min: 0,
-              val: 0,
-            },
-            {
-              labelName: "Lowest From the Ground",
-              name: "lowest",
-              max: 999,
-              min: 0,
-              val: 0,
-            },
-            {
-              labelName: "Highest From the Ground",
-              name: "highest",
-              max: 999,
-              min: 0,
-              val: 0,
-            },
-          ].map(({ name, max, min, labelName }) => {
-            const isBaseOffsetShow =
-              !(name === "baseOffset" && config.surfaceLength == 0) ||
-              !(name === "baseOffset" && config.surfaceWidth == 0);
-
-            const isInactive =
-              (name === "surfaceLength" && config.surfaceLength == 0) ||
-              (name === "surfaceWidth" && config.surfaceWidth == 0);
-
-            if (name === "lowest" || name === "highest") {
-              max = config.surfaceHeight;
-            }
-
-            return (
-              <div
-                style={
-                  name === "baseOffset"
-                    ? isBaseOffsetShow
-                      ? {
-                        opacity: 0,
-                        maxHeight: 0,
-                        overflow: "hidden",
-                        transition:
-                          "opacity 1s ease, max-height 0.5s ease 0.3s",
-                      }
-                      : {
-                        opacity: 1,
-                        maxHeight: "500px",
-                        overflow: "hidden",
-                        transition:
-                          "opacity 1s ease 0.5s, max-height 2s ease 0.5s",
-                      }
-                    : undefined
-                }
-              >
-                <label
-                  key={name}
-                  style={{
-                    ...(isInactive ? { color: "#ddd" } : {}),
-                    ...(name === "surfaceLength" || name === "lowest"
-                      ? { marginTop: "70px" }
-                      : {}),
-                  }}
-                >
-                  {labelName}:
-                </label>
-                <div className={Styles.inputsDiv}>
-                  <input
-                    type="range"
-                    name={name}
-                    value={config[name]}
-                    onChange={handleChange}
-                    min={min}
-                    max={max}
-                    className={isInactive ? Styles.inactive : ""}
-                  />
-                  <input
-                    type="number"
-                    name={name}
-                    value={config[name]}
-                    onChange={handleChange}
-                    min={min}
-                    max={max}
-                    style={
-                      isInactive
-                        ? {
-                          color: "#ddd",
-                        }
-                        : {}
-                    }
-                  />
-                </div>
+            { label: "Rows", name: "rows", min: 1, max: 20 },
+            { label: "Columns", name: "cols", min: 1, max: 20 },
+            { label: "Spacing", name: "spacing", min: 0, max: 100 },
+            { label: "Base Plate Length", name: "surfaceLength", min: 0, max: 999 },
+            { label: "Base Plate Width", name: "surfaceWidth", min: 0, max: 999 },
+            { label: "Base Plate From Floor", name: "surfaceHeight", min: 0, max: 999 },
+            { label: "Base Plate Offset", name: "baseOffset", min: 0, max: 30 },
+            { label: "Lowest From Ground", name: "lowest", min: 0, max: config.surfaceHeight },
+            { label: "Highest From Ground", name: "highest", min: 0, max: config.surfaceHeight },
+          ].map(({ label, name, min, max }) => (
+            <div key={name}>
+              <label>{label}</label>
+              <div className={Styles.inputsDiv}>
+                <input
+                  type="range"
+                  name={name}
+                  min={min}
+                  max={max}
+                  value={config[name]}
+                  onChange={handleChange}
+                />
+                <input
+                  type="number"
+                  name={name}
+                  min={min}
+                  max={max}
+                  value={config[name]}
+                  onChange={handleChange}
+                />
               </div>
-            );
-          })}
-          <div></div>
-          <button
-            style={
-              config.pattern === "random"
-                ? { opacity: 1, transition: "opacity 0.7s ease" }
-                : { opacity: 0, transition: "opacity 0.7s ease" }
-            }
-            onClick={handleGenerate}
-          >
-            Generate
-          </button>
+            </div>
+          ))}
+          {workingModel}
         </div>
+
+        {/* Generate Data */}
         <button
-          className={`mx-auto mt-auto mb-10
-            ${panelOpen
-              ? "opacity-1 w-3/4 transition-all delay-500"
-              : "opacity-0 w-0"
-            }`}
+          className={`mx-auto mt-auto mb-10 ${
+            panelOpen ? "opacity-100 w-3/4" : "opacity-0 w-0"
+          }`}
           onClick={handleGetData}
         >
           Generate Data
         </button>
       </div>
-      <ObjFile config={config} onStringHeightsUpdate={setStringHeights} />
 
-      <div>
-        <Modal onClick={handleModal} modalState={ismodalOpen}>
-<div className="overflow-y-auto max-h-[80vh] w-[1500px] scrollbar-hide">
-            {currentData ? (
-              <div>
-                <h1 className="text-3xl">LOREM IPSUM</h1>
-                <p>Lorem ipsum dolor sit amet consectetur, adipisicing elit. Excepturi, dicta fugiat eaque iusto nam hic possimus. </p>
+      {/* ================= 3D VIEW ================= */}
+      <ObjFile
+        ref={objRef}
+        config={config}
+        onStringHeightsUpdate={setStringHeights}
+      />
 
-                {/* 3D IMAGE HERE */}
-                <div className="w-[50%] m-auto" style={{ transform: "rotate(90deg)" }}>
-                  <Baseplate2D
-                    stringHeights={currentData.stringHeights}
-                    surface={currentData.surface}
-                    config={config}
-                  />
-                </div>
+      {/* ================= MODAL ================= */}
+      <Modal onClick={handleModal} modalState={ismodalOpen}>
+        {currentData && (
+          <div className="overflow-y-auto max-h-[80vh] w-[1500px] scrollbar-hide">
+            <h1 className="text-3xl mb-4">Lighting Configuration</h1>
+          {/* Export */}
+            <div className="flex gap-2">
+              <button
+                className="mt-3 bg-black text-white p-4 rounded-md hover:bg-[#3bb44b]"
+                onClick={() => objRef.current?.exportOBJ()}
+              >
+                Export to OBJ
+              </button>
+              <button
+                className="mt-3 bg-black text-white p-4 rounded-md hover:bg-[#3bb44b]"
+              >
+                Export to PDF
+              </button>
+              <button
+                className="mt-3 bg-black text-white p-4 rounded-md hover:bg-[#3bb44b]"
+              >
+                SAVE
+              </button>
+            </div>
 
-                <div className="px-4">
-                  <h1>Technical Specs</h1>
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="py-2">POSITION</th>
-                        <th className="py-2">LIGHT TYPE</th>
-                        <th className="py-2">COLOR</th>
-                        <th className="py-2">FITTING COLOR</th>
-                        <th className="py-2">CABLE LENGTH</th>
-                        <th className="py-2">ITEMCODE</th>
-                      </tr>
-                    </thead>
+            {/* 3D IMAGE */}
+              <div></div>
+            {/* 2D image */}
+            <div className="w-[50%] m-auto">
+              <Baseplate2D
+                stringHeights={currentData.stringHeights}
+                surface={currentData.surface}
+                config={config}
+              />
+            </div>
 
-                    <tbody className="divide-y">
-                      {currentData.stringHeights.map((string, index) => (
-                        <tr key={index} className="border-b">
-                          <td className="py-2">{`${string.row}-${string.col}`}</td>
-                          <td className="py-2"></td>
-                          <td className="py-2"></td>
-                          <td className="py-2"></td>
-                          <td className="py-2">{`${string.stringHeight} cm`}</td>
-                          <td className="py-2"></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-
-                </div>
-              </div>
-            ) : (
-              // col: 1
-              // pendantY: 19
-              // row: 0
-              // stringHeight: 151
-
-              // const data = {
-              //   stringHeights,
-              //   surface: {
-              //     length: surfaceLength,
-              //     width: surfaceWidth,
-              //     height: config.surfaceHeight,
-              //   },
-              //   pattern: config.pattern,
-              //   pendantType: "Your pendant type here",
-              //   finishes: "Your finishes here",
-              //   objFile: "/configurator/models/myModel.obj",
-              // };
-
-              ""
-            )}
+            <div className="px-4 mt-6">
+              <h2 className="text-xl mb-2">Technical Specs</h2>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th>Position</th>
+                    <th>Cable Length</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentData.stringHeights.map((s, i) => (
+                    <tr key={i} className="border-b">
+                      <td>{`R${s.row} C${s.col}`}</td>
+                      <td>{`${s.stringHeight} cm`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </Modal>
-      </div>
+        )}
+      </Modal>
     </div>
   );
 }
