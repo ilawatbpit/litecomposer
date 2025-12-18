@@ -7,7 +7,8 @@ export default function LightType() {
   const [activeImage, setActiveImage] = useState(0);
   const [fade, setFade] = useState(false);
 
-  const { workingModel, setWorkingModel } = useWorkingModel();
+  const { workingModel, setWorkingModel, setBtnClicked } = useWorkingModel();
+
 
   const modelList = [
     {
@@ -88,7 +89,11 @@ export default function LightType() {
                             flex flex-col justify-center items-center 
                             group-hover:opacity-100 opacity-0 duration-300 transition-all">
               <button 
-              onClick={() => setWorkingModel(each.name)}
+              onClick={() => {
+                setWorkingModel(each.name);
+                 setBtnClicked("detail");
+              }
+              }
               className="bg-black w-1/4 shadow-white/10 shadow-xl  text-white backdrop-blur-md hover:bg-[#0d0d0d]
                                  px-4 py-2 rounded-full mb-3 transition">
                 SELECT

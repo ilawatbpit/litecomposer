@@ -10,6 +10,7 @@ import { useWorkingModel } from "../../context/WorkingModelContext";
 export default function LightComposition() {
 
   const { workingModel, setWorkingModel } = useWorkingModel();
+  
 
   const objRef = useRef(null);
 

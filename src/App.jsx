@@ -1,7 +1,6 @@
 import Header from "./components/Header.jsx";
-import TabChoice from "./components/TabChoice/TabChoice.jsx";
-import SideBar from "./components/SideBar/SideBar.jsx";
-import { WorkingModelProvider } from "./context/WorkingModelContext";
+import SideBar from "./components/SideBar.jsx";
+import { useWorkingModel } from "./context/WorkingModelContext";
 
 import LightComposition from "./components/LightComposition/LightComposition";
 import LightDetail from "./components/LightDetail";
@@ -11,7 +10,9 @@ import "./App.css";
 import { useState } from "react";
 
 function App() {
-  const [btnClicked, setBtnClicked] = useState("type");
+
+    const {btnClicked, setBtnClicked} = useWorkingModel();
+
 
   function handleTabClick(value) {
     setBtnClicked(value);
@@ -30,7 +31,6 @@ function App() {
   return (
     <>
       <div>
-         <WorkingModelProvider>
         <Header handleTabClick={handleTabClick} />
         <div className="main-container">
           <div className="side-bar ">
@@ -43,7 +43,6 @@ function App() {
             {content}
           </div>
         </div>
-        </WorkingModelProvider>
       </div>
     </>
   );

@@ -8,9 +8,6 @@ export default function Modal({children, onClick, modalState}) {
         <div className="bg-white p-6 rounded-xl shadow-xl relative">
             <div className='absolute top-[-10px] right-[-10px] rounded flex justify-center items-center text-white w-7 h-7 bg-red-500'  onClick={onClick} ><X /></div>
             {children}
-            {/* <div className="bg-red-400">
-            <button onClick={onClick}>Close</button>
-            </div> */}
         </div>
     </div>
   );

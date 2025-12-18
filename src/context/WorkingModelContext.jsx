@@ -4,10 +4,18 @@ import { createContext, useContext, useState } from "react";
 const WorkingModelContext = createContext(null);
 
 export function WorkingModelProvider({ children }) {
-  const [workingModel, setWorkingModel] = useState("asdfasdf");
+  const [workingModel, setWorkingModel] = useState("");
+  const [btnClicked, setBtnClicked] = useState("type");
 
   return (
-    <WorkingModelContext.Provider value={{ workingModel, setWorkingModel }}>
+    <WorkingModelContext.Provider
+      value={{
+        workingModel,
+        setWorkingModel,
+        btnClicked,
+        setBtnClicked,
+      }}
+    >
       {children}
     </WorkingModelContext.Provider>
   );
@@ -15,5 +23,11 @@ export function WorkingModelProvider({ children }) {
 
 // custom hook (recommended)
 export function useWorkingModel() {
-  return useContext(WorkingModelContext);
+  const context = useContext(WorkingModelContext);
+  if (!context) {
+    throw new Error(
+      "useWorkingModel must be used within a WorkingModelProvider"
+    );
+  }
+  return context;
 }
