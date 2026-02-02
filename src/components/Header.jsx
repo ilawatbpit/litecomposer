@@ -5,13 +5,15 @@ export default function Header({handleTabClick}){
 
     function handleClickBurger (event){
         setIsClickBurger((prev)=>!prev)
-        handleTabClick(event);
+        handleTabClick(event.currentTarget.dataset.name);
+        // handleTabClick("detail")
+        
     }
 
     return(
         <>
             <div className=" flex flex-row items-center justify-between h-10 md:hidden w-full p-4">
-            <img src={logo} alt="" className="m-0" />        
+            {/* <img src={logo} alt="" className="m-0" /> */}
             <span onClick={()=> setIsClickBurger((prev)=>!prev)}>&#9776;</span>
             </div>
 

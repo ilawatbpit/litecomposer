@@ -1,63 +1,101 @@
-import { color } from "three/tsl";
+import { useMemo } from "react";
 import { useWorkingModel } from "../context/WorkingModelContext";
+import modelList from "../../public/data";
+
 export default function LightDetail() {
+  const { workingModel, setWorkingModel, setBtnClicked } = useWorkingModel();
 
-    const { workingModel, setWorkingModel, setBtnClicked } = useWorkingModel();
+  const selectedData = useMemo(
+    () => modelList.find((m) => String(m.id) === String(workingModel.model)),
+    [workingModel.model]
+  );
 
-    return (<>
-        <style>
-            {`button{
-            border: 1px solid black;
-            padding: 10px 20px;
-            border-radius: 12px;
-            }
-        button:hover{
-            background-color: black;
-            color: white;
-            }
-        button:focus{
-            background-color: black;
-            color: white;
-            }
-            
-        `
-            }
-        </style>
-        <div className="w-full h-[100vh] flex flex-col justify-center items-center p-10">
-            <div className=" w-full h-full flex flex-col">
-                <div>
-                    <h1 className="text-3xl font-bold">Material / Finish</h1>
-                </div>
-                <div className="flex-1 px-40 text-xl flex flex-col items-start justify-evenly">
-                    <div className="">
-                        <p>Color: </p>
-                        <div className="p-10 flex gap-4">
-                            <button>Clear</button>
-                            <button>Amber</button>
-                        </div>
-                    </div>
-                    <div>
-                        <p>Fittings:
+  const specs = selectedData?.specification ?? {};
 
-                        </p>
-                        <div className="p-10 flex gap-4">
-                            <button>metal</button>
-                            <button>none</button>
-                        </div>
-                    </div>
-                    <div>
-                        <p>Size: </p>
-                        <div className="p-10 flex gap-4">
-                            <button>small</button>
-                            <button>large</button>
-                        </div>
-                    </div>
-                </div>
-                <div className="ml-auto px-40">
-                    <button className="bg-black text-white px-8 py-4 rounded-xl" onClick={() => setBtnClicked("composition")}>Done</button>
-                </div>
-            </div>
+  return (
+    <div className="w-full min-h-dvh flex items-center justify-center">
+      <div className="w-full max-w-6xl min-h-dvh flex flex-col">
+        {/* Header */}
+        <div className="px-4 sm:px-8 lg:px-16 xl:px-24 pt-8 sm:pt-10">
+          <h1 className="text-2xl sm:text-3xl font-bold">Material / Finish</h1>
+          {selectedData?.name && (
+            <p className="mt-2 text-sm sm:text-base text-gray-600">
+              {selectedData.name}
+            </p>
+          )}
         </div>
 
-    </>)
+        {/* Content (scrollable) */}
+        <div className="flex-1 overflow-auto px-4 sm:px-8 lg:px-16 xl:px-24 py-6 sm:py-10">
+          {Object.keys(specs).length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-gray-300 p-6 text-gray-600">
+              No specifications found for this model.
+            </div>
+          ) : (
+            <div className="space-y-10">
+              {Object.entries(specs).map(([specName, values]) => (
+                <section key={specName} className="space-y-3">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h2 className="text-lg sm:text-xl font-semibold">
+                      {specName}
+                    </h2>
+
+                    {/* Selected pill */}
+                    {/* {workingModel?.[specName] && (
+                      <span className="text-xs sm:text-sm px-3 py-1 rounded-full bg-black/5 text-gray-800">
+                        Selected: {String(workingModel[specName])}
+                      </span>
+                    )} */}
+                  </div>
+
+                  {/* Options */}
+                  <div className="flex flex-wrap gap-3">
+                    {(Array.isArray(values) ? values : []).map((val) => {
+                      const isSelected =
+                        String(workingModel?.[specName]) === String(val);
+
+                      return (
+                        <button
+                          key={`${specName}-${val}`}
+                          type="button"
+                          onClick={() =>
+                            setWorkingModel((prev) => ({
+                              ...prev,
+                              [specName]: val,
+                            }))
+                          }
+                          className={[
+                            "px-4 py-2 rounded-xl border text-sm sm:text-base",
+                            "transition active:scale-[0.98]",
+                            isSelected
+                              ? "bg-black text-white border-black"
+                              : "bg-white text-black border-black/30 hover:border-black hover:bg-black hover:text-white",
+                          ].join(" ")}
+                        >
+                          {val}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer (sticky on mobile) */}
+        <div className="sticky bottom-0 w-full px-4 sm:px-8 lg:px-16 xl:px-24 py-4">
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setBtnClicked("composition")}
+              className="px-6 sm:px-8 py-3 rounded-xl bg-black text-white hover:bg-[#0d0d0d] transition"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

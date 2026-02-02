@@ -1,4 +1,4 @@
-// src/components/LightComposition.jsx
+import { RulerDimensionLine } from 'lucide-react';
 import React, { useState, useRef } from "react";
 import Styles from "./LightComposition.module.css";
 import ObjFile from "./ObjFile.jsx";
@@ -11,25 +11,28 @@ export default function LightComposition() {
 
   const { workingModel, setWorkingModel } = useWorkingModel();
   
-
   const objRef = useRef(null);
 
   const [currentData, setCurrentData] = useState(null);
   const [ismodalOpen, setIsModalOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
   const [stringHeights, setStringHeights] = useState([]);
+  const [showDimention, setShowDimention] = useState(true);
 
   const [config, setConfig] = useState({
     rows: 9,
     cols: 5,
     pattern: "wave",
-    spacing: 20,
+    spacingL:20,
+    spacingW:20,
     surfaceHeight: 170,
     surfaceLength: 0,
     surfaceWidth: 0,
     baseOffset: 10,
     lowest: 0,
     highest: 150,
+    clipToShape: true,
+    circleSegments: 96,
   });
 
   /* ===============================
@@ -75,13 +78,11 @@ export default function LightComposition() {
    COLLECT DATA FOR MODAL
    =============================== */
 const handleGetData = () => {
-  // IMPORTANT: Must match ObjFile.jsx axis convention:
-  // rows -> Length (Z), cols -> Width (X)
   const autoSurfaceLength =
-    (config.rows - 1) * config.spacing + parseInt(config.baseOffset || 0, 10);
+    (config.rows - 1) * config.spacingL + parseInt(config.baseOffset || 0, 10);
 
   const autoSurfaceWidth =
-    (config.cols - 1) * config.spacing + parseInt(config.baseOffset || 0, 10);
+    (config.cols - 1) * config.spacingW + parseInt(config.baseOffset || 0, 10);
 
   const surfaceLength =
     config.surfaceLength === 0 ? autoSurfaceLength : config.surfaceLength;
@@ -89,16 +90,28 @@ const handleGetData = () => {
   const surfaceWidth =
     config.surfaceWidth === 0 ? autoSurfaceWidth : config.surfaceWidth;
 
+  const isCircle = workingModel.surfaceShape === "circle";
+
+  // ✅ IMPORTANT: clone + enrich NOW so first render is correct
+  const enrichedStringHeights = (stringHeights || []).map((s, i) => ({
+    ...s,
+    row: s.row ?? (isCircle ? `P${i + 1}` : s.row),
+    col: s.col ?? (isCircle ? "" : s.col),
+    index: s.index ?? i,
+  }));
+
   const data = {
-    stringHeights,
+    stringHeights: enrichedStringHeights,
     surface: {
-      length: surfaceLength, // Z
-      width: surfaceWidth,   // X
+      length: surfaceLength,
+      width: surfaceWidth,
       height: config.surfaceHeight,
       baseOffset: config.baseOffset,
-      spacing: config.spacing, // (optional, but useful later)
+      spacingL: config.spacingL,
+      spacingW: config.spacingW,
       rows: config.rows,
       cols: config.cols,
+      shape: workingModel.surfaceShape,
     },
     pattern: config.pattern,
     pendantType: "Custom Pendant",
@@ -109,6 +122,7 @@ const handleGetData = () => {
   setCurrentData(data);
   setIsModalOpen(true);
 };
+
 
 
   /* ===============================
@@ -157,19 +171,26 @@ const handleGetData = () => {
 
           {/* Sliders */}
           {[
+            { label: "Base Plate Width", name: "surfaceWidth", min: 0, max: 999 },
+            { label: "Base Plate Length", name: "surfaceLength", min: 0, max: 999 },
             { label: "Rows", name: "rows", min: 1, max: 20 },
             { label: "Columns", name: "cols", min: 1, max: 20 },
-            { label: "Spacing", name: "spacing", min: 0, max: 100 },
-            { label: "Base Plate Length", name: "surfaceLength", min: 0, max: 999 },
-            { label: "Base Plate Width", name: "surfaceWidth", min: 0, max: 999 },
-            { label: "Base Plate From Floor", name: "surfaceHeight", min: 0, max: 999 },
             { label: "Base Plate Offset", name: "baseOffset", min: 0, max: 30 },
+            { label: "Spacing Y", name: "spacingL", min: 0, max: 100 }, //length
+            { label: "Spacing X", name: "spacingW", min: 0, max: 100 }, //width
+            { label: "Base Plate From Floor", name: "surfaceHeight", min: 0, max: 999 },
             { label: "Lowest From Ground", name: "lowest", min: 0, max: config.surfaceHeight },
             { label: "Highest From Ground", name: "highest", min: 0, max: config.surfaceHeight },
-          ].map(({ label, name, min, max }) => (
-            <div key={name}>
+          ].map(({ label, name, min, max }) => {
+            
+            const isSurfaceField = name == "baseOffset";
+            const isSurfaceValue = config.surfaceLength > 0 || config.surfaceWidth > 0;
+            return(            
+            <div key={name} className={`transition-all duration-500 ease-in-out
+                                      ${isSurfaceField && isSurfaceValue && workingModel.surfaceShape !== "circle"? "opacity-0 max-h-0 scale-95": "opacity-1 max-h-40 scale-100"}
+            `}>
               <label>{label}</label>
-              <div className={Styles.inputsDiv}>
+              <div className={name == "cols" || name == "spacingW" || name == "surfaceLength"  || name == "highest" ? 'mb-16' : null }>
                 <input
                   type="range"
                   name={name}
@@ -187,9 +208,11 @@ const handleGetData = () => {
                   onChange={handleChange}
                 />
               </div>
-            </div>
-          ))}
-          {workingModel}
+            </div>)
+
+})}
+          <div><button  onClick={handleChange}>refresh</button></div>
+        {/* {Object.entries(workingModel).map(([val, value]) => value)} */}
         </div>
 
         {/* Generate Data */}
@@ -208,6 +231,7 @@ const handleGetData = () => {
         ref={objRef}
         config={config}
         onStringHeightsUpdate={setStringHeights}
+        showDimention = {showDimention}
       />
 
       {/* ================= MODAL ================= */}
@@ -258,7 +282,7 @@ const handleGetData = () => {
                 <tbody>
                   {currentData.stringHeights.map((s, i) => (
                     <tr key={i} className="border-b">
-                      <td>{`R${s.row} C${s.col}`}</td>
+                      {workingModel.surfaceShape == "circle" ? (<td>{`${s.row}`}</td>) : (<td>{`R${s.row} C${s.col}`}</td>)}
                       <td>{`${s.stringHeight} cm`}</td>
                     </tr>
                   ))}
@@ -268,6 +292,9 @@ const handleGetData = () => {
           </div>
         )}
       </Modal>
+      <div className="fixed top-4 right-4">
+                <RulerDimensionLine className='w-5 md:w-8 md:h-8' onClick={()=> setShowDimention(prev => !prev)}/>
+      </div>
     </div>
   );
 }

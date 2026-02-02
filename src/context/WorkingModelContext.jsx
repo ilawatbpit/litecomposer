@@ -4,7 +4,7 @@ import { createContext, useContext, useState } from "react";
 const WorkingModelContext = createContext(null);
 
 export function WorkingModelProvider({ children }) {
-  const [workingModel, setWorkingModel] = useState("");
+  const [workingModel, setWorkingModel] = useState({model: "", modelName:"", color: "", fitting: "", size: ""});
   const [btnClicked, setBtnClicked] = useState("type");
 
   return (

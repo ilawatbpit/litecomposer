@@ -16,6 +16,18 @@ import { OBJExporter } from "three/examples/jsm/exporters/OBJExporter";
 
 import { useWorkingModel } from "../../context/WorkingModelContext";
 
+  const colorsHex = [
+  { name: "red", hex: "#B91C1C" },
+  { name: "green", hex: "#15803D" },
+  { name: "blue", hex: "#2563EB" },
+  { name: "yellow", hex: "#CA8A04" },
+  { name: "cyan", hex: "#0891B2" },
+  { name: "magenta", hex: "#9D174D" },
+  { name: "black", hex: "#111827" },
+  { name: "white", hex: "#F9FAFB" },
+  { name: "gray", hex: "#6B7280" },
+  { name: "clear", hex: "#F9FAFB" }
+];
 
 
 
@@ -61,7 +73,7 @@ function createDimensionLine(start, end, labelText) {
 /* =====================================================
    COMPONENT
    ===================================================== */
-const ObjFile = forwardRef(({ config, onStringHeightsUpdate }, ref) => {
+const ObjFile = forwardRef(({ config, onStringHeightsUpdate, showDimention}, ref) => {
   const containerRef = useRef(null);
   const sceneRef = useRef(new THREE.Scene());
   const modelRef = useRef(null);
@@ -69,8 +81,28 @@ const ObjFile = forwardRef(({ config, onStringHeightsUpdate }, ref) => {
   const cameraRef = useRef(null);
 
   const dimensionLines = useRef([]);
+  const dimenttionHelperRef = useRef(null);
+  const axesHelperRef = useRef(null);
 
   const { workingModel} = useWorkingModel();
+  const surfaceShape = workingModel.surfaceShape; //shape of baseplate
+
+  function getHexColor(){ // to convert color to hex
+   return colorsHex.find(color => color.name == workingModel.color).hex || "#F9FAFB";
+}
+
+const configRef = useRef(config);
+
+useEffect(() => {
+  configRef.current = config;
+}, [config]);
+
+useEffect(() => {
+  if (axesHelperRef.current) axesHelperRef.current.visible = showDimention;
+
+  // also re-generate scene so dimension lines disappear/appear
+  if (modelRef.current) updateSceneWithConfig();
+}, [showDimention]);
 
   /* =====================================================
      EXPOSE EXPORT FUNCTION
@@ -78,30 +110,32 @@ const ObjFile = forwardRef(({ config, onStringHeightsUpdate }, ref) => {
   useImperativeHandle(ref, () => ({
     exportOBJ,
   }));
+function exportOBJ() {
+  const exporter = new OBJExporter();
+  const exportGroup = new THREE.Group();
 
-  function exportOBJ() {
-    const exporter = new OBJExporter();
-    const exportGroup = new THREE.Group();
-    exportGroup.name = "LightingConfigurator";
+  sceneRef.current.traverse((obj) => {
+    if (obj.userData?.isPendant || obj.userData?.isString || obj.userData?.isSurface) {
+      exportGroup.add(obj.clone(true));
+    }
+  });
 
-    sceneRef.current.traverse((obj) => {
-      if (
-        obj.userData?.isPendant ||
-        obj.userData?.isString ||
-        obj.userData?.isSurface
-      ) {
-        exportGroup.add(obj.clone(true));
-      }
-    });
+  exportGroup.updateMatrixWorld(true);
 
-    const objData = exporter.parse(exportGroup);
-    const blob = new Blob([objData], { type: "text/plain" });
+  // ✅ Unit fix: if your target app imports 100x too big, scale down 100x
+  const EXPORT_SCALE = 0.01;  // try 0.01 first
+  exportGroup.scale.setScalar(EXPORT_SCALE);
+  exportGroup.updateMatrixWorld(true);
 
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "lighting-configurator.obj";
-    link.click();
-  }
+  const objData = exporter.parse(exportGroup);
+  const blob = new Blob([objData], { type: "text/plain" });
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "lighting-configurator.obj";
+  link.click();
+}
+
 
   /* =====================================================
      INIT THREE.JS
@@ -110,7 +144,7 @@ const ObjFile = forwardRef(({ config, onStringHeightsUpdate }, ref) => {
 
     const container = containerRef.current;
     const scene = sceneRef.current;
-    scene.background = new THREE.Color(0xc7c7c7);
+    scene.background = new THREE.Color(0xfafafa);
 
     const camera = new THREE.PerspectiveCamera(
       75,
@@ -122,8 +156,23 @@ const ObjFile = forwardRef(({ config, onStringHeightsUpdate }, ref) => {
     cameraRef.current = camera;
 
     // Helpers
-    scene.add(new THREE.AxesHelper(300));
-    scene.add(new THREE.GridHelper(1000, 50));
+    // axis helpers the (x, y, z lines)
+    // const axes = new THREE.AxesHelper(300);
+    // axes.userData.isAxisHelper = true;
+    // axes.material.transparent = true;
+    // axes.material.opacity = 0.1;
+    // scene.add(axes);
+    // axesHelperRef.current = axes;
+
+
+    const belowGrid = new THREE.GridHelper(1000, 50);
+    belowGrid.material.color.set(0x000000)
+    belowGrid.material.opacity = 0.05;
+    belowGrid.material.transparent = true;
+    scene.add(belowGrid);
+
+
+
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -152,13 +201,36 @@ const ObjFile = forwardRef(({ config, onStringHeightsUpdate }, ref) => {
     
 
     const loader = new OBJLoader();
-    loader.load(
-      import.meta.env.BASE_URL + "models/"+workingModel+".obj",
-      (obj) => {
-        modelRef.current = obj;
-        updateSceneWithConfig();
-      }
-    );
+      loader.load(
+        import.meta.env.BASE_URL + "models/" + workingModel.modelName + ".obj",
+        (obj) => {
+
+          // ✅ CHANGE OBJ COLOR HERE (before cloning)
+          obj.traverse((child) => {
+            if (child.isMesh) {
+              child.material = new THREE.MeshStandardMaterial({
+              color: getHexColor(),       // glass tint (white = clear)
+              roughness: 0.05,       // lower = clearer reflections
+              metalness: 0.0,
+
+              transmission: 1.0,     // TRUE glass (light passes through)
+              transparent: true,     // required for transmission/opacity behavior
+              opacity: 0.8,          // keep 1.0 when using transmission
+              ior: 1.5,              // glass ~1.45–1.52
+              thickness: 1.0,        // "volume" feel (tweak per model scale)
+              clearcoat: 1.0,
+              clearcoatRoughness: 0.05,
+
+              side: THREE.DoubleSide // useful if your glass is thin (no inner faces)
+              });
+            }
+          });
+
+          modelRef.current = obj;
+          updateSceneWithConfig();
+        }
+      );
+
 
     window.addEventListener("resize", handleResize);
 
@@ -175,6 +247,31 @@ const ObjFile = forwardRef(({ config, onStringHeightsUpdate }, ref) => {
   /* =====================================================
      MAIN SCENE GENERATOR (PATTERN LOGIC UNCHANGED)
      ===================================================== */
+
+  function generateSunflowerPoints(count, radius) {
+  const pts = [];
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // ~2.399963...
+
+  for (let i = 0; i < count; i++) {
+    // 0..1 area-uniform radius
+    const t = (i + 0.5) / count;
+    const r = Math.sqrt(t) * radius;
+
+    const theta = i * goldenAngle;
+
+    const x = r * Math.cos(theta);
+    const z = r * Math.sin(theta);
+
+    const distNorm = r / radius;            // 0..1
+    const angle01 = (theta % (Math.PI * 2)) / (Math.PI * 2); // 0..1
+
+    pts.push({ x, z, distNorm, angle01 });
+  }
+
+  return pts;
+}
+
+
   const updateSceneWithConfig = () => {
     const scene = sceneRef.current;
     const baseModel = modelRef.current;
@@ -196,7 +293,8 @@ const ObjFile = forwardRef(({ config, onStringHeightsUpdate }, ref) => {
     const {
       rows,
       cols,
-      spacing,
+      spacingL,
+      spacingW,
       pattern,
       surfaceHeight,
       lowest,
@@ -215,34 +313,67 @@ const colsN = Math.max(1, parseInt(cols, 10) || 1);
     let surfaceWidth = inputSurfaceWidth;
 
 if (surfaceWidth === 0 && surfaceLength === 0) {
-  surfaceLength = (rowsN - 1) * spacing + Number(baseOffset || 0); // Z = ROWS
-  surfaceWidth  = (colsN - 1) * spacing + Number(baseOffset || 0); // X = COLS
+  surfaceLength = (rowsN - 1) * spacingL + Number(baseOffset || 0); // Z = ROWS
+  surfaceWidth  = (colsN - 1) * spacingW + Number(baseOffset || 0); // X = COLS
 }
 
-    // DIMENSIONS — EDGE ALIGNED
-    const widthLine = createDimensionLine(
-      new THREE.Vector3(-surfaceWidth / 2, surfaceHeight + 5, surfaceLength / 2),
-      new THREE.Vector3(surfaceWidth / 2, surfaceHeight + 5, surfaceLength / 2),
-      `${surfaceWidth} cm`
-    );
-    scene.add(widthLine);
-    dimensionLines.current.push(widthLine);
 
-    const lengthLine = createDimensionLine(
-      new THREE.Vector3(surfaceWidth / 2, surfaceHeight + 5, -surfaceLength / 2),
-      new THREE.Vector3(surfaceWidth / 2, surfaceHeight + 5, surfaceLength / 2),
-      `${surfaceLength} cm`
-    );
-    scene.add(lengthLine);
-    dimensionLines.current.push(lengthLine);
+// to get the circle radius
+let circleRadius = 0;
 
-    // GRID SIZE
-const gridWidth  = (colsN - 1) * spacing; // X
-const gridLength = (rowsN - 1) * spacing; // Z
+if (surfaceShape === "circle") {
+  const diameterBasis =
+    surfaceWidth && surfaceLength
+      ? Math.min(surfaceWidth, surfaceLength)
+      : (surfaceWidth || surfaceLength);
 
-// CENTER GRID INSIDE SURFACE
-const offsetX = -surfaceWidth / 2 + (surfaceWidth - gridWidth) / 2;
-const offsetZ = -surfaceLength / 2 + (surfaceLength - gridLength) / 2;
+  circleRadius = Math.max(1, Number(diameterBasis) / 2);
+}
+
+
+// DIMENSIONS — EDGE ALIGNED (RECT) / DIAMETER (CIRCLE)
+
+if (surfaceShape === "circle" && showDimention) {
+  const diameter = circleRadius * 2;
+
+  const diaLine = createDimensionLine(
+    new THREE.Vector3(-circleRadius, surfaceHeight + 5, 0),
+    new THREE.Vector3(circleRadius, surfaceHeight + 5, 0),
+    `${diameter} cm`
+  );
+  scene.add(diaLine);
+  dimensionLines.current.push(diaLine);
+
+} 
+if (surfaceShape !== "circle" && showDimention) {
+  const widthLine = createDimensionLine(
+    new THREE.Vector3(-surfaceWidth / 2, surfaceHeight + 5, surfaceLength / 2),
+    new THREE.Vector3(surfaceWidth / 2, surfaceHeight + 5, surfaceLength / 2),
+    `${surfaceWidth} cm`
+  );
+  scene.add(widthLine);
+  dimensionLines.current.push(widthLine);
+
+  const lengthLine = createDimensionLine(
+    new THREE.Vector3(surfaceWidth / 2, surfaceHeight + 5, -surfaceLength / 2),
+    new THREE.Vector3(surfaceWidth / 2, surfaceHeight + 5, surfaceLength / 2),
+    `${surfaceLength} cm`
+  );
+  scene.add(lengthLine);
+  dimensionLines.current.push(lengthLine);
+}
+
+
+// GRID SIZE
+const gridWidth  = (colsN - 1) * spacingW; // X
+const gridLength = (rowsN - 1) * spacingL; // Z
+
+// CENTER GRID INSIDE SURFACE (RECT) / INSIDE CIRCLE BOUNDING SQUARE
+const effectiveSurfaceWidth  = (surfaceShape === "circle") ? (circleRadius * 2) : surfaceWidth;
+const effectiveSurfaceLength = (surfaceShape === "circle") ? (circleRadius * 2) : surfaceLength;
+
+const offsetX = -effectiveSurfaceWidth / 2 + (effectiveSurfaceWidth - gridWidth) / 2;
+const offsetZ = -effectiveSurfaceLength / 2 + (effectiveSurfaceLength - gridLength) / 2;
     const centerRow = (rowsN - 1) / 2;
     const centerCol = (colsN - 1) / 2;
     const maxGridRadius = Math.sqrt(
@@ -251,100 +382,197 @@ const offsetZ = -surfaceLength / 2 + (surfaceLength - gridLength) / 2;
 
     const localStringHeight = [];
 
-    for (let r = 0; r < rowsN; r++) {
-      for (let c = 0; c < colsN; c++) {
-        const dr = r - centerRow;
-        const dc = c - centerCol;
-        const dist = Math.sqrt(dr * dr + dc * dc);
-        const t = dist / maxGridRadius;
+if (surfaceShape === "circle") {
+  // total pendants from rows x cols slider
+  const total = rowsN * colsN;
 
-        let yOffset = minY;
+  // keep pendants slightly inside the plate edge
+  const margin = Math.max(0, Number(baseOffset || 0) * 0.5);
+  const usableRadius = Math.max(1, circleRadius - margin);
+      // const usableRadius = inputSurfaceWidth && inputSurfaceLength ? Math.max(1, circleRadius - spacingL) : Math.max(1, circleRadius - margin);
+  console.log(margin)
 
-        switch (pattern) {
-          case "dome":
-            yOffset = minY + (maxY - minY) * (1 - t) ** 2;
-            break;
-          case "reverseDome":
-            yOffset = minY + (maxY - minY) * t ** 2;
-            break;
-          case "wave":
-            yOffset =
-              (minY + maxY) / 2 +
-              (Math.sin(c * 0.5) + Math.cos(r * 0.5)) *
-                ((maxY - minY) / 2) *
-                0.5;
-            break;
-          case "ripple":
-            yOffset =
-              minY + (maxY - minY) * (Math.sin(dist * 1.5) * 0.5 + 0.5);
-            break;
-          case "spiral":
-            yOffset =
-              minY +
-              (maxY - minY) *
-                ((Math.atan2(dr, dc) + Math.PI) / (2 * Math.PI));
-            break;
-          case "diagonal":
-            yOffset =
-              minY + (maxY - minY) * ((r + c) / (rowsN + colsN - 2));
-            break;
-          case "checkerboard":
-            yOffset = (r + c) % 2 === 0 ? minY : maxY;
-            break;
-          case "random":
-            yOffset = minY + Math.random() * (maxY - minY);
-            break;
-          default:
-            yOffset = minY;
-        }
+  const points = generateSunflowerPoints(total, usableRadius);
 
-        yOffset = Math.floor(yOffset);
+  for (let i = 0; i < points.length; i++) {
+    const { x, z, distNorm, angle01 } = points[i];
 
-        const pendant = baseModel.clone();
-        pendant.position.set(
-          offsetX + c * spacing,
-          yOffset,
-          offsetZ + r * spacing
-        );
-        pendant.userData.isPendant = true;
-        scene.add(pendant);
+    let yOffset = minY;
 
-        const stringHeight = surfaceHeight - yOffset;
-        const string = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.1, 0.1, stringHeight, 8),
-          new THREE.MeshStandardMaterial({ color: 0x292929 })
-        );
-        string.position.set(
-          pendant.position.x,
-          yOffset + stringHeight / 2,
-          pendant.position.z
-        );
-        string.userData.isString = true;
-        scene.add(string);
+    // ✅ Pattern using distance/angle (works great for circle layouts)
+    switch (pattern) {
+      case "dome":
+        yOffset = minY + (maxY - minY) * (1 - distNorm) ** 2;
+        break;
 
-        localStringHeight.push({
-          x: offsetX + c * spacing,
-          y: offsetZ + r * spacing,
-          row: r,
-          col: c,
-          stringHeight,
-        });
-      }
+      case "reverseDome":
+        yOffset = minY + (maxY - minY) * distNorm ** 2;
+        break;
+
+      case "ripple":
+        yOffset = minY + (maxY - minY) * (Math.sin(distNorm * Math.PI * 3) * 0.5 + 0.5);
+        break;
+
+      case "spiral":
+        yOffset = minY + (maxY - minY) * angle01;
+        break;
+
+      case "random":
+        yOffset = minY + Math.random() * (maxY - minY);
+        break;
+
+      // patterns that were grid-based → fallback
+      default:
+        yOffset = minY;
     }
 
-    onStringHeightsUpdate?.(localStringHeight);
+    yOffset = Math.floor(yOffset);
 
-    const surfaceMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(surfaceWidth, surfaceLength),
+    const pendant = baseModel.clone();
+    pendant.position.set(x, yOffset, z);
+    pendant.userData.isPendant = true;
+    scene.add(pendant);
+
+    const stringHeight = surfaceHeight - yOffset;
+    const string = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.1, 0.1, stringHeight, 8),
       new THREE.MeshStandardMaterial({
-        color: 0x555555,
-        side: THREE.DoubleSide,
+        color: 0xcccccc,
+        metalness: 0.9,
+        roughness: 0.2,
       })
     );
-    surfaceMesh.rotation.x = -Math.PI / 2;
-    surfaceMesh.position.set(0, surfaceHeight, 0);
+
+    string.position.set(x, yOffset + stringHeight / 2, z);
+    string.userData.isString = true;
+    scene.add(string);
+
+    localStringHeight.push({
+      x,
+      y: z,
+      index: i,
+      stringHeight,
+    });
+  }
+} else {
+  //  ORIGINAL GRID behavior for rectangle plate
+  for (let r = 0; r < rowsN; r++) {
+    for (let c = 0; c < colsN; c++) {
+      const dr = r - centerRow;
+      const dc = c - centerCol;
+      const dist = Math.sqrt(dr * dr + dc * dc);
+      const t = dist / maxGridRadius;
+
+      let yOffset = minY;
+
+      switch (pattern) {
+        case "dome":
+          yOffset = minY + (maxY - minY) * (1 - t) ** 2;
+          break;
+        case "reverseDome":
+          yOffset = minY + (maxY - minY) * t ** 2;
+          break;
+        case "wave":
+          yOffset =
+            (minY + maxY) / 2 +
+            (Math.sin(c * 0.5) + Math.cos(r * 0.5)) *
+              ((maxY - minY) / 2) *
+              0.5;
+          break;
+        case "ripple":
+          yOffset =
+            minY + (maxY - minY) * (Math.sin(dist * 1.5) * 0.5 + 0.5);
+          break;
+        case "spiral":
+          yOffset =
+            minY +
+            (maxY - minY) *
+              ((Math.atan2(dr, dc) + Math.PI) / (2 * Math.PI));
+          break;
+        case "diagonal":
+          yOffset =
+            minY + (maxY - minY) * ((r + c) / (rowsN + colsN - 2));
+          break;
+        case "checkerboard":
+          yOffset = (r + c) % 2 === 0 ? minY : maxY;
+          break;
+        case "random":
+          yOffset = minY + Math.random() * (maxY - minY);
+          break;
+        default:
+          yOffset = minY;
+      }
+
+      yOffset = Math.floor(yOffset);
+
+      const x = offsetX + c * spacingW;
+      const z = offsetZ + r * spacingL;
+
+      const pendant = baseModel.clone();
+      pendant.position.set(x, yOffset, z);
+      pendant.userData.isPendant = true;
+      scene.add(pendant);
+
+      const stringHeight = surfaceHeight - yOffset;
+      const string = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.1, 0.1, stringHeight, 8),
+        new THREE.MeshStandardMaterial({
+          color: 0xcccccc,
+          metalness: 0.9,
+          roughness: 0.2,
+        })
+      );
+
+      string.position.set(x, yOffset + stringHeight / 2, z);
+      string.userData.isString = true;
+      scene.add(string);
+
+      localStringHeight.push({
+        x,
+        y: z,
+        row: r,
+        col: c,
+        stringHeight,
+      });
+    }
+  }
+}
+
+onStringHeightsUpdate?.(localStringHeight);
+
+
+    let surfaceGeometry;
+    const thickness = 4; // cm
+
+    const surfaceMat = new THREE.MeshStandardMaterial({
+      color: 0xe2e2e2,
+      side: THREE.DoubleSide,
+    });
+
+    if (surfaceShape === "circle") {
+      surfaceGeometry = new THREE.CylinderGeometry(
+        circleRadius,
+        circleRadius,
+        thickness,
+        config.circleSegments
+      );
+    } else {
+      surfaceGeometry = new THREE.BoxGeometry(
+        surfaceWidth,   // X (width)
+        thickness,      // Y (thickness) ✅
+        surfaceLength   // Z (length)
+      );
+    }
+
+    const surfaceMesh = new THREE.Mesh(surfaceGeometry, surfaceMat);
+
+    // surfaceMesh.rotation.x = -Math.PI / 2;
+    surfaceMesh.rotation.set(0, 0, 0);
+    // surfaceMesh.position.set(0, surfaceHeight, 0);
+    surfaceMesh.position.set(0, surfaceHeight - thickness / 2, 0);
     surfaceMesh.userData.isSurface = true;
     scene.add(surfaceMesh);
+    
   };
 
   const handleResize = () => {
