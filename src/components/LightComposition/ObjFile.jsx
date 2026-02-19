@@ -11,8 +11,11 @@ import React, {
 
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
+// import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OBJExporter } from "three/examples/jsm/exporters/OBJExporter";
+import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment";
 
 import { useWorkingModel } from "../../context/WorkingModelContext";
 
@@ -182,6 +185,39 @@ function exportOBJ() {
     rendererRef.current = renderer;
     container.appendChild(renderer.domElement);
 
+    // =======================
+// ENVIRONMENT / HDRI (makes GLB materials bright + realistic)
+// Keep white background, but use env for lighting/reflections
+// =======================
+const pmrem = new THREE.PMREMGenerator(renderer);
+pmrem.compileEquirectangularShader();
+
+// ✅ Option A (recommended): Use a real HDR file (place it in /public/env/studio.hdr)
+const hdrPath = import.meta.env.BASE_URL + "env/studio.hdr";
+
+new RGBELoader().load(
+  hdrPath,
+  (hdrTex) => {
+    hdrTex.mapping = THREE.EquirectangularReflectionMapping;
+
+    const envMap = pmrem.fromEquirectangular(hdrTex).texture;
+    scene.environment = envMap;
+
+    // keep background white (do NOT set scene.background = hdrTex)
+    hdrTex.dispose();
+    pmrem.dispose();
+  },
+  undefined,
+  () => {
+    // ✅ Option B (fallback): No HDR file needed (still brightens a lot)
+    const env = new RoomEnvironment();
+    const envMap = pmrem.fromScene(env).texture;
+    scene.environment = envMap;
+    pmrem.dispose();
+  }
+);
+
+
     scene.add(new THREE.AmbientLight(0xffffff, 0.4));
     const dir = new THREE.DirectionalLight(0xffffff, 1);
     dir.position.set(10, 10, 10);
@@ -200,36 +236,30 @@ function exportOBJ() {
 
     
 
-    const loader = new OBJLoader();
-      loader.load(
-        import.meta.env.BASE_URL + "models/" + workingModel.modelName + ".obj",
-        (obj) => {
+const basePath = import.meta.env.BASE_URL + "models/";
+const gltfLoader = new GLTFLoader();
 
-          // ✅ CHANGE OBJ COLOR HERE (before cloning)
-          obj.traverse((child) => {
-            if (child.isMesh) {
-              child.material = new THREE.MeshStandardMaterial({
-              color: getHexColor(),       // glass tint (white = clear)
-              roughness: 0.05,       // lower = clearer reflections
-              metalness: 0.0,
+gltfLoader.load(
+`${basePath}${workingModel.model}${workingModel.color}.glb`,
+  // basePath + workingModel.modelName + ".glb",
+  (gltf) => {
 
-              transmission: 1.0,     // TRUE glass (light passes through)
-              transparent: true,     // required for transmission/opacity behavior
-              opacity: 0.8,          // keep 1.0 when using transmission
-              ior: 1.5,              // glass ~1.45–1.52
-              thickness: 1.0,        // "volume" feel (tweak per model scale)
-              clearcoat: 1.0,
-              clearcoatRoughness: 0.05,
+    // ✅ brighten GLB materials (common issue: looks dark without env)
+    gltf.scene.traverse((child) => {
+      if (child.isMesh && child.material) {
+        // works for MeshStandardMaterial / MeshPhysicalMaterial
+        child.material.envMapIntensity = 1.6; // try 1.2 to 2.5
+        child.material.needsUpdate = true;
+      }
+    });
 
-              side: THREE.DoubleSide // useful if your glass is thin (no inner faces)
-              });
-            }
-          });
+    modelRef.current = gltf.scene;
+    updateSceneWithConfig();
+  },
+  undefined,
+  (err) => console.error("GLB load error:", err)
+);
 
-          modelRef.current = obj;
-          updateSceneWithConfig();
-        }
-      );
 
 
     window.addEventListener("resize", handleResize);
@@ -431,6 +461,7 @@ if (surfaceShape === "circle") {
     const pendant = baseModel.clone();
     pendant.position.set(x, yOffset, z);
     pendant.userData.isPendant = true;
+    pendant.rotation.y = Math.random() * Math.PI * 2;
     scene.add(pendant);
 
     const stringHeight = surfaceHeight - yOffset;
@@ -511,6 +542,7 @@ if (surfaceShape === "circle") {
       const pendant = baseModel.clone();
       pendant.position.set(x, yOffset, z);
       pendant.userData.isPendant = true;
+      pendant.rotation.y = Math.random() * Math.PI * 2;
       scene.add(pendant);
 
       const stringHeight = surfaceHeight - yOffset;

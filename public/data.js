@@ -1,50 +1,26 @@
  const modelList = [
     {
-      id: "c1",
-      name: "cylinder",
+      id: "GL012A",
+      name: "GL012A orange",
       images: [
-        import.meta.env.BASE_URL + "/crystals/crystal1/crystal1.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal1/mock 1.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal1/mock 2.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal1/mock 3.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal1/mock 4.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal1/mock 5.jpg",
+        import.meta.env.BASE_URL + "/crystals/GL012A/GL012A.jpg",
+        import.meta.env.BASE_URL + "/crystals/GL012A/GL012A-2.jpg",
       ],
       specification:{
-        color: ["red","blue", "clear", "green"],
+        color: ["white","orange"],
         surfaceShape: ["circle", "rectangle"]
       }
     },
     {
-      id: "c2",
-      name: "teardrop",
+      id: "bird",
+      name: "bird",
       images: [
-        import.meta.env.BASE_URL + "/crystals/crystal 2/crystal2.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal 2/mock 1.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal 2/mock 2.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal 2/mock 3.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal 2/mock 4.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal 2/mock 5.jpg",
+        import.meta.env.BASE_URL + "/crystals/bird/bird.jpg",
       ],
       specification:{
-        color: ["red","blue"]
+        surfaceShape: ["circle", "rectangle"]
       }
     },
-    {
-      id: "c3",
-      name: "circle",
-      images: [
-        import.meta.env.BASE_URL + "/crystals/crystal 3/crystal3.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal 3/mock 1.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal 3/mock 2.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal 3/mock 3.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal 3/mock 4.jpg",
-        import.meta.env.BASE_URL + "/crystals/crystal 3/mock 5.jpg",
-      ],
-      specification:{
-        color: ["red","blue"]
-      }
-    }
   ];
 
 
